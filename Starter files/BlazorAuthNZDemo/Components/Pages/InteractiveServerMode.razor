@@ -1,0 +1,65 @@
+@page "/interactiveservermode"
+@rendermode InteractiveServer
+
+@using BlazorAuthNZDemo.Client.Models
+@using BlazorAuthNZDemo.Services
+@using System.Text.Json
+
+<h3>This component is rendered with <b>interactive server-side rendering</b></h3>
+
+<button class="btn btn-primary" @onclick="CallLocalDataAsync">Call local data</button>
+<button class="btn btn-primary" @onclick="CallRemoteAPIAsync">Call remote API</button>
+
+@if (bands == null)
+{
+    <p><em>No results yet...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var band in bands)
+            {
+                <tr>
+                    <td>@band.Id</td>
+                    <td>@band.Name</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Inject]
+    private BandsRepository BandsRepository { get; set; } = default!;
+
+    [Inject]
+    private IHttpClientFactory HttpClientFactory { get; set; } = default!;
+
+    private List<Band>? bands;
+    private readonly JsonSerializerOptions _jsonOptions = new()
+        { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    private async Task CallLocalDataAsync()
+    {
+        bands = BandsRepository.GetBands().ToList();
+        await Task.CompletedTask;
+    }
+
+    private async Task CallRemoteAPIAsync()
+    {
+        var httpClient = HttpClientFactory.CreateClient("RemoteAPIClient");
+        var response = await httpClient.GetAsync("remoteapi/bands");
+        response.EnsureSuccessStatusCode();
+
+        bands = await JsonSerializer.DeserializeAsync<List<Band>>(
+            await response.Content.ReadAsStreamAsync(),
+            _jsonOptions) ?? [];
+    }
+}
