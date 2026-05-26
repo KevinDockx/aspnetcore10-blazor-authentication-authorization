@@ -1,0 +1,10 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="BlazorAuthNZDemo.Client/BlazorAuthNZDemo.Client.csproj" />
+  <Project Path="BlazorAuthNZDemo.RemoteApi/BlazorAuthNZDemo.RemoteApi.csproj" />
+  <Project Path="BlazorAuthNZDemo/BlazorAuthNZDemo.csproj" />
+</Solution>

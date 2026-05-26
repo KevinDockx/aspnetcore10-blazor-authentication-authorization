@@ -1,0 +1,92 @@
+@page "/interactiveautomode"
+@rendermode InteractiveAuto
+
+@using BlazorAuthNZDemo.Client.Models
+@using System.Text.Json
+@using BlazorAuthNZDemo.Client.Services
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.WebAssembly.Http
+
+@using BlazorAuthNZDemo.Client.Authorization
+@attribute [Authorize(Policy = Policies.IsFromBelgium)]
+
+<h3>This component is rendered with <b>interactive auto (server & client-side) rendering</b></h3>
+
+<p><em>@authMessage</em></p>
+
+<button class="btn btn-primary" @onclick="CallLocalAPIAsync">Call local API</button>
+<button class="btn btn-primary" @onclick="CallRemoteAPIAsync">Call remote API</button>
+
+@if (bands == null)
+{
+    <p><em>No results yet...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Name</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var band in bands)
+            {
+                <tr>
+                    <td>@band.Id</td>
+                    <td>@band.Name</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Inject]
+    private HttpClient Http { get; set; } = default!;
+    [Inject]
+    private IBandsClient BandsClient { get; set; } = default!;
+
+
+    private List<Band>? bands;
+    private readonly JsonSerializerOptions _jsonOptions = new()
+        { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+    private string? authMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthenticationStateTask).User;
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            authMessage = $"{user.Identity.Name} is authenticated.";
+        }
+        else
+        {
+            authMessage = "The user is not authenticated.";
+        }
+    }
+
+    private async Task CallLocalAPIAsync()
+    {
+        bands = await BandsClient.GetBandsAsync();
+    }
+
+    private async Task CallRemoteAPIAsync()
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get,
+            "forward-to-remote-api/bands");
+        request.SetBrowserRequestCredentials(BrowserRequestCredentials.Include);
+        var response = await Http.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        bands = await JsonSerializer.DeserializeAsync<List<Band>>(
+                await response.Content.ReadAsStreamAsync(),
+                _jsonOptions,
+                CancellationToken.None) ?? [];
+    }
+}
